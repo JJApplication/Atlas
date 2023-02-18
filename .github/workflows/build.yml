@@ -1,0 +1,61 @@
+
+name: Atlas release
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  GO111MODULE: on
+  GONOSUMDB: "*"
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+      - name: Get date
+        run: echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+
+      - name: Set Tag
+        run: echo "TagName=$(date +"%Y%m%d.%H%M%S")" >> $GITHUB_ENV
+
+      - name: Start
+        run: echo "start to build Atlas"
+
+      - name: Build
+        run: bash build/build.sh
+
+      - name: Done
+        run: echo "build success"
+
+      - name: CreateMD
+        run: |
+          touch ${{ github.workspace }}-CHANGELOG.txt
+          echo "" > ${{ github.workspace }}-CHANGELOG.txt
+          echo "# 🚀 Atlas Daily Build" >> ${{ github.workspace }}-CHANGELOG.txt
+          echo "## 🤖 Published by bot" >> ${{ github.workspace }}-CHANGELOG.txt
+          echo "build at ${{ env.DATE }}" >> ${{ github.workspace }}-CHANGELOG.txt
+          echo "## 📄 What‘s new" >> ${{ github.workspace }}-CHANGELOG.txt
+          echo "" >> ${{ github.workspace }}-CHANGELOG.txt
+          echo "${{ github.event.head_commit.message }}" >> ${{ github.workspace }}-CHANGELOG.txt
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TagName }}
+          name: Atlas ${{ env.DATE }}
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          draft: false
+          prerelease: false
+          files: "modules/*.so"
